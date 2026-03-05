@@ -19,7 +19,11 @@ class State(object):
         self.bond_vocab = bond_vocab
         self.attach_vocab = attach_vocab
         self.attachments = self.get_attachments()
-        self.attachment_ids, self.attachment_types = lzip(*self.attachments) if self.attachments else ([], [])
+        if self.attachments:
+            ids, types = zip(*self.attachments)
+            self.attachment_ids, self.attachment_types = list(ids), list(types)
+        else:
+            self.attachment_ids, self.attachment_types = [], []
         self.graph = self.mol2graph()
         self.embedding = None
 

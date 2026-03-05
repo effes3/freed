@@ -84,9 +84,14 @@ class SAC:
         q_values, _ = self.critic(state, action, from_index=True)
 
         with torch.no_grad():
-            action = self.actor(next_state)
-            entropy = action.entropy()
-            _, q_target = self.critic_target(next_state, action.index, from_index=True)
+            try:
+                action = self.actor(next_state)
+                entropy = action.entropy()
+                _, q_target = self.critic_target(next_state, action.index, from_index=True)
+            except (ValueError, RuntimeError):
+                # Terminal state or no valid fragment partners — treat as end of episode
+                entropy = torch.zeros(1, 1, device=self.device)
+                q_target = torch.zeros(1, 1, device=self.device)
             alpha = self.log_alpha.exp().item()
             target = reward + self.gamma * (1 - done) * (q_target + alpha * entropy)
 
@@ -99,7 +104,16 @@ class SAC:
     def actor_loss(self, data):
         weight = data['weight'] if data.get('weight') is not None else 1
         state = data['state']
-        action = self.actor(state)
+        try:
+            action = self.actor(state)
+        except (ValueError, RuntimeError):
+            # Terminal state stored in replay buffer — no valid next action, skip update
+            zero = torch.zeros(1, device=self.device)
+            return {
+                'actor_loss': zero, 'entropy_loss': zero,
+                'policy_loss': zero, 'alpha_loss': zero,
+                'Entropy': zero, 'Alpha': self.log_alpha.exp().item(), 'Q': zero
+            }
         _, q_value = self.critic(state, action.embedding)
         alpha = self.log_alpha.exp().item()
         entropy = action.entropy()
@@ -157,17 +171,19 @@ class SAC:
 
     def update_actor(self, data):
         actor_items = self.actor_loss(data)
-        self.actor_optimizer.zero_grad()
-        actor_items['actor_loss'].backward()
-        clip_grad_norm_(self.actor.parameters(), self.max_norm)
-        self.actor_optimizer.step()
-        self.actor.reset()
+        if actor_items['actor_loss'].requires_grad:
+            self.actor_optimizer.zero_grad()
+            actor_items['actor_loss'].backward()
+            clip_grad_norm_(self.actor.parameters(), self.max_norm)
+            self.actor_optimizer.step()
+            self.actor.reset()
         return actor_items
 
     def update_alpha(self, actor_items):
-        self.alpha_optimizer.zero_grad()
-        actor_items['alpha_loss'].backward()
-        self.alpha_optimizer.step()
+        if actor_items['alpha_loss'].requires_grad:
+            self.alpha_optimizer.zero_grad()
+            actor_items['alpha_loss'].backward()
+            self.alpha_optimizer.step()
 
     def _update(self, data):
         prioritizer_items = dict()
@@ -271,11 +287,19 @@ class SAC:
     @torch.no_grad()
     def collect_experience(self):
         smiles, steps = list(), 0
+        fail_count = 0
+        max_fails = self.steps_per_epoch * 10
+        last_error = "Unknown"
         while steps < self.steps_per_epoch:
             smi, n = self.assemble_molecule()
             if smi is not None:
                 smiles.append(remove_attachments(smi))
                 steps += n
+                fail_count = 0
+            else:
+                fail_count += 1
+                if fail_count > max_fails:
+                    raise RuntimeError(f"Too many failed assemblies ({max_fails}). Last: {n}")
 
         rewards = self.compute_rewards(smiles)
         self.update_buffer(rewards['Reward'])

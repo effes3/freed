@@ -63,7 +63,7 @@ class Environment(object):
         
         num_att = [len(frag.attachments) for frag in self.fragments]
         S, T = len(self.state.attachments), timelimit
-        N, M = len(frag_vocab), max(num_att)
+        N, M = len(self.fragments), max(num_att) if num_att else 0
         self.actions_dim = (S + T * (M - 1), N, M)
 
     def reward_batch(self, smiles):

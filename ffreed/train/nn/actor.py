@@ -149,6 +149,11 @@ class Actor(nn.Module):
         options = torch.stack(options, dim=2)
         options = self.pad(options.split(sections), size).view(batch_size, size, -1, options.size(2))
         logits = self.pad(logits.split(sections), size, value=float("-inf")).view(batch_size, size)
+
+        # Safety: if all logits are -inf, softmax produces NaN. Raise so the episode is skipped.
+        if torch.isinf(logits).all(dim=1).any():
+            raise ValueError("All attachment sites are masked — no compatible fragment partners found.")
+
         onehot = F.gumbel_softmax(logits, tau=self.tau, hard=True, dim=1)
         index = torch.argmax(onehot, dim=1, keepdim=True)
         options = onehot[None, :, None, :] @ options.permute(3, 0, 1, 2)
