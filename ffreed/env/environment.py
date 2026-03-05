@@ -1,3 +1,4 @@
+environment.py
 from rdkit import Chem
 from operator import methodcaller, itemgetter
 from functools import partial
@@ -43,7 +44,24 @@ class Environment(object):
         self.state = State(starting_smile, self.num_steps, **self.state_args)
         self.rewards = rewards
         self.timelimit = timelimit
-        self.fragments = [State(frag, 0, **self.state_args) for frag in self.frag_vocab]
+        self.fragments = []
+        for frag in self.frag_vocab:
+            try:
+                state = State(frag, 0, **self.state_args)
+                # architecture safety check: The current connect_mols only handles terminal stickers.
+                # If a sticker has > 1 neighbor, it is a "bridging" fragment that will break the molecule.
+                is_valid = True
+                mol = state.molecule
+                for idx in state.attachment_ids:
+                    if len(mol.GetAtomWithIdx(idx).GetNeighbors()) > 1:
+                        is_valid = False
+                        break
+                
+                if is_valid:
+                    self.fragments.append(state)
+            except Exception as e:
+                print(f"Skipping invalid fragment {frag}: {e}")
+        
         num_att = [len(frag.attachments) for frag in self.fragments]
         S, T = len(self.state.attachments), timelimit
         N, M = len(frag_vocab), max(num_att)
@@ -71,6 +89,8 @@ class Environment(object):
         self.num_steps = 0
         self.state = State(self.starting_smile, self.num_steps, **self.state_args)
         return self.state
+
+
 
     def attach_fragment(self, action):
         a1, a2, a3 = action

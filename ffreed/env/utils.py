@@ -1,3 +1,5 @@
+utils.py
+
 from copy import deepcopy
 import numpy as np
 from rdkit import Chem
@@ -6,11 +8,13 @@ from ffreed.utils import lmap
 
 
 def MolFromSmiles(smile):
+    mol = Chem.MolFromSmiles(smile)
+    if mol is None:
+        raise ValueError(f'Failed to parse molecule {smile}')
     try:
-        mol = Chem.MolFromSmiles(smile)
         Chem.SanitizeMol(mol)
-    except:
-        raise ValueError(f'Failed to sanitize molecule {smile}')
+    except Exception as e:
+        raise ValueError(f'Failed to sanitize molecule {smile}: {e}')
     return mol
 
 

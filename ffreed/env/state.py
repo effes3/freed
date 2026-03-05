@@ -1,3 +1,4 @@
+state.py
 import numpy as np
 import dgl
 from rdkit import Chem
@@ -60,7 +61,7 @@ class State(object):
             u.append(begin_idx)
             v.append(end_idx)
 
-        g = dgl.graph((u + v, v + u))
+        g = dgl.graph((u + v, v + u), num_nodes=mol.GetNumAtoms())
         g.ndata['x'] = torch.from_numpy(node_feat)
         g.edata['x'] = torch.from_numpy(np.concatenate([edge_feat, edge_feat], axis=0))
 

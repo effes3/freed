@@ -1,3 +1,4 @@
+sac.py
 import time
 from collections import defaultdict
 from functools import partial
@@ -117,6 +118,8 @@ class SAC:
             'Q': q_value.mean()
         }
 
+
+
     def prioritizer_loss(self, data):
         done = data['done'].squeeze(1).to(torch.bool).tolist()
         if not done or not sum(done):
@@ -206,6 +209,8 @@ class SAC:
         weight = (data['priority'] * N) ** (-beta)
         return weight
 
+
+
     @log_time
     def update(self):
         log_items = defaultdict(list)
@@ -222,9 +227,10 @@ class SAC:
     @torch.no_grad()
     def sample(self, num_mols=1, dump=False):
         smiles = list()
-        for _ in range(num_mols):
+        while len(smiles) < num_mols:
             smile, _ = self.assemble_molecule()
-            smiles.append(remove_attachments(smile))
+            if smile is not None:
+                smiles.append(remove_attachments(smile))
         
         if dump:
             suffix = int2str(self.epoch)
@@ -236,20 +242,29 @@ class SAC:
         state = self.env.reset()
         done = False
         cnt = 0
-        while not done:
-            action = self.actor(construct_batch([state], device=self.device))
-            next_state, reward, terminated, truncated, info = self.env.step(action.index[0])
-            done = terminated or truncated
-            experience = {
-                'state': state, 'next_state': next_state, 'reward': reward, 'terminated': terminated,
-                'truncated': truncated, 'done': done, 'action': action.index[0]
-            }
+        episode_experience = []
+        try:
+            while not done:
+                action = self.actor(construct_batch([state], device=self.device))
+                next_state, reward, terminated, truncated, info = self.env.step(action.index[0])
+                done = terminated or truncated
+                experience = {
+                    'state': state, 'next_state': next_state, 'reward': reward, 'terminated': terminated,
+                    'truncated': truncated, 'done': done, 'action': action.index[0]
+                }
+                episode_experience.append(experience)
+                state = next_state
+                cnt += 1
+        except Exception as e:
+            # If assembly fails, return None to signal that this episode should be skipped
+            return None, 0
+
+        # Only store transitions if the entire episode was successful
+        for exp in episode_experience:
             if self.prioritizer:
-                priority = self.compute_priority(experience, batched=False)
-                experience['priority'] = priority[0]
-            self.replay_buffer.store(experience)
-            state = next_state
-            cnt += 1
+                priority = self.compute_priority(exp, batched=False)
+                exp['priority'] = priority[0]
+            self.replay_buffer.store(exp)
         
         return next_state.smile, cnt
 
@@ -259,8 +274,9 @@ class SAC:
         smiles, steps = list(), 0
         while steps < self.steps_per_epoch:
             smi, n = self.assemble_molecule()
-            smiles.append(remove_attachments(smi))
-            steps += n
+            if smi is not None:
+                smiles.append(remove_attachments(smi))
+                steps += n
 
         rewards = self.compute_rewards(smiles)
         self.update_buffer(rewards['Reward'])
@@ -298,6 +314,8 @@ class SAC:
         if self.prioritizer:
             state_dict['prioritizer'] = self.prioritizer.state_dict()
             state_dict['prioritizer_optimizer'] = self.prioritizer_optimizer.state_dict()
+
+
 
         torch.save(state_dict, fname)
     
