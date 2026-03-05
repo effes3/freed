@@ -29,10 +29,10 @@ BOX_SIZE="20.0,20.0,20.0" \
 python $SOURCE_DIR/main.py \
     --exp_root $EXP_DIR \
     --alert_collections $DATA_DIR/alert_collection.csv \
-    --fragments $DATA_DIR/motifs/fragments_fixed.json \
+    --fragments $DATA_DIR/motifs/merged_motifs.json \
     --receptor $DATA_DIR/receptors/protein.pdbqt \
     --vina_program $PROJ_DIR/utils/qvina02 \
-    --starting_smile "c1([15*])ccc([18*])cc1" \
+    --starting_smile "c1([1*])ccc([2*])cc1" \
     --fragmentation brics \
     --num_sub_proc 12 \
     --n_conf 1 \

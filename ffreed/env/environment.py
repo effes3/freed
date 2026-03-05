@@ -1,4 +1,3 @@
-environment.py
 from rdkit import Chem
 from operator import methodcaller, itemgetter
 from functools import partial

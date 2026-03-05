@@ -1,4 +1,3 @@
-state.py
 import numpy as np
 import dgl
 from rdkit import Chem

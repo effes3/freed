@@ -1,4 +1,3 @@
-sac.py
 import time
 from collections import defaultdict
 from functools import partial

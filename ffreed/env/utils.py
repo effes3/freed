@@ -1,5 +1,3 @@
-utils.py
-
 from copy import deepcopy
 import numpy as np
 from rdkit import Chem
