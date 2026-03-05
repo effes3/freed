@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/semakin_grisha/FFREED/ffreed/main.py", line 180, in <module>
+    main(args)
+  File "/home/semakin_grisha/FFREED/ffreed/main.py", line 148, in main
+    env = Environment(**args)
+  File "/home/semakin_grisha/FFREED/ffreed/env/environment.py", line 44, in __init__
+    self.state = State(starting_smile, self.num_steps, **self.state_args)
+  File "/home/semakin_grisha/FFREED/ffreed/env/state.py", line 21, in __init__
+    self.attachments = self.get_attachments()
+  File "/home/semakin_grisha/FFREED/ffreed/env/state.py", line 76, in get_attachments
+    att_type = int(np.argmax(one_hot(atom.GetSmarts(), self.attach_vocab)))
+  File "/home/semakin_grisha/FFREED/ffreed/env/utils.py", line 20, in one_hot
+    raise ValueError(f'{x} not in {values}')
+ValueError: [18*] not in ['[1*]', '[3*]', '[4*]', '[5*]', '[6*]', '[7*]', '[8*]', '[9*]', '[10*]', '[11*]', '[12*]', '[13*]', '[14*]', '[15*]', '[16*]']

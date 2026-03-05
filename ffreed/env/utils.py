@@ -81,5 +81,5 @@ def ecfp(smile, r=2, n=1024):
     return list(AllChem.GetMorganFingerprintAsBitVect(molecule, r, n))
 
 
-BRICS_NUM_TYPES = 15
+BRICS_NUM_TYPES = 31
 BRICS_MATRIX = np.stack([np.array([j in brics_compatible(i) for j in range(BRICS_NUM_TYPES)]) for i in range(BRICS_NUM_TYPES)])

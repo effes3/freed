@@ -13,7 +13,8 @@ conda activate freed
 
 # 2. Переменные путей (замени /home/user на свой путь в системе)
 PROJ_DIR="/home/semakin_grisha/FFREED"
-DATA_DIR="$PROJ_DIR/data"
+SOURCE_DIR="$PROJ_DIR/ffreed"
+DATA_DIR="$SOURCE_DIR/data"
 EXP_DIR="$PROJ_DIR/experiments"
 
 # 3. ПАРАМЕТРЫ ДОКИНГА (ВАЖНО!)
@@ -25,9 +26,9 @@ BOX_SIZE="20.0,20.0,20.0" \
 # 4. ЗАПУСК
 # --fragments: указываем твой новый JSON
 # --starting_smile: меняем метки на те, что в твоем JSON (например, 15 для азида, 18 для галогенида)
-python $PROJ_DIR/main.py \
+python $SOURCE_DIR/main.py \
     --exp_root $EXP_DIR \
-    --alert_collections $DATA_DIR/alert_collections.csv \
+    --alert_collections $DATA_DIR/alert_collection.csv \
     --fragments $DATA_DIR/motifs/fragments_fixed.json \
     --receptor $DATA_DIR/receptors/protein.pdbqt \
     --vina_program $PROJ_DIR/utils/qvina02 \

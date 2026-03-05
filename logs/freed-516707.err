@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/semakin_grisha/FFREED/ffreed/main.py", line 179, in <module>
+    args = setup()
+  File "/home/semakin_grisha/FFREED/ffreed/main.py", line 172, in setup
+    raise ValueError(f'Experiment directory "{args.exp_dir}" already exist!')
+ValueError: Experiment directory "/home/semakin_grisha/FFREED/ffreed/experiments/freed_expert_v1" already exist!

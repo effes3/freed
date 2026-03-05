@@ -22,8 +22,7 @@ class Environment(object):
         if fragmentation == 'crem':
             attach_vocab = ['*']
         elif fragmentation == 'brics':
-            attach_vocab = [f"[{i}*]" for i in range(1, 17)]
-            attach_vocab.remove("[2*]")
+            attach_vocab = [f"[{i}*]" for i in range(31)]
  
         self.attach_vocab = attach_vocab
         self.num_att_types = len(attach_vocab)
