@@ -1,5 +1,3 @@
-utils.py
-
 from copy import deepcopy
 import numpy as np
 from rdkit import Chem
@@ -66,16 +64,32 @@ def remove_attachments(smile):
 def connect_mols(mol1, mol2, atom1, atom2):
     combined = deepcopy(Chem.CombineMols(mol1, mol2))
     emol = Chem.EditableMol(combined)
-    neighbor1_idx = atom1.GetNeighbors()[0].GetIdx()
-    neighbor2_idx = atom2.GetNeighbors()[0].GetIdx()
+    
+    nb1 = atom1.GetNeighbors()
+    nb2 = atom2.GetNeighbors()
+    if not nb1 or not nb2:
+        raise ValueError(f"Attachment point has no neighbors: mol1_nb={len(nb1)}, mol2_nb={len(nb2)}")
+        
+    neighbor1_idx = nb1[0].GetIdx()
+    neighbor2_idx = nb2[0].GetIdx()
+    
     atom1_idx = atom1.GetIdx()
     atom2_idx = atom2.GetIdx()
-    bond_order = atom2.GetBonds()[0].GetBondType()
+    
+    bonds2 = atom2.GetBonds()
+    if not bonds2:
+        raise ValueError("Fragment attachment point has no bonds")
+        
+    bond_order = Chem.BondType.SINGLE
     emol.AddBond(neighbor1_idx, neighbor2_idx +
                     mol1.GetNumAtoms(), order=bond_order)
     emol.RemoveAtom(atom2_idx + mol1.GetNumAtoms())
     emol.RemoveAtom(atom1_idx)
     mol = emol.GetMol()
+    try:
+        Chem.SanitizeMol(mol)
+    except Exception as e:
+        raise ValueError(f"Connection created an invalid molecule: {e}")
     return mol
 
 

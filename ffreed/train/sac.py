@@ -1,4 +1,3 @@
-sac.py
 import time
 from collections import defaultdict
 from functools import partial
@@ -240,7 +239,7 @@ class SAC:
     
     def assemble_molecule(self):
         state = self.env.reset()
-        done = False
+        done = not state.attachments
         cnt = 0
         episode_experience = []
         try:
@@ -256,8 +255,9 @@ class SAC:
                 state = next_state
                 cnt += 1
         except Exception as e:
-            # If assembly fails, return None to signal that this episode should be skipped
-            return None, 0
+            # Return current smile and error for debugging
+            mol_smi = state.smile if 'state' in locals() else "None"
+            return None, f"Error at {mol_smi}: {str(e)}"
 
         # Only store transitions if the entire episode was successful
         for exp in episode_experience:
@@ -272,11 +272,21 @@ class SAC:
     @torch.no_grad()
     def collect_experience(self):
         smiles, steps = list(), 0
+        fail_count = 0
+        max_fails = self.steps_per_epoch * 12
+        last_error = "Unknown"
+
         while steps < self.steps_per_epoch:
-            smi, n = self.assemble_molecule()
+            smi, res = self.assemble_molecule()
             if smi is not None:
                 smiles.append(remove_attachments(smi))
-                steps += n
+                steps += res
+                fail_count = 0 # reset on success
+            else:
+                last_error = res
+                fail_count += 1
+                if fail_count > max_fails:
+                    raise RuntimeError(f"Too many failed molecule assemblies (over {max_fails}). Last error: {last_error}")
 
         rewards = self.compute_rewards(smiles)
         self.update_buffer(rewards['Reward'])

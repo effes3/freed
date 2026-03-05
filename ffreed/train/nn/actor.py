@@ -98,8 +98,19 @@ class Actor(nn.Module):
         batch_size = molecule.batch_size
         sections = molecule.sections
         attachments = get_attachments(molecule)
-        molecule = molecule.readout.repeat_interleave(sections, dim=0)
-        logits, mergers = self.molecule_attachment_ranker(molecule, attachments)
+        
+        # Calculate logits for all sites
+        molecule_readout = molecule.readout.repeat_interleave(sections, dim=0)
+        logits, mergers = self.molecule_attachment_ranker(molecule_readout, attachments)
+        
+        # Mask sites that have NO partners in the library
+        if self.fragmentation == 'brics':
+            # [Total_Num_Stickers, 31]
+            att_types = F.one_hot(get_attachments(molecule, types=True), num_classes=BRICS_NUM_TYPES).float()
+            # [Total_Num_Stickers] - 1 if has any partner, 0 otherwise
+            has_partners = (att_types @ self.fragments_attachments_compatible).sum(1).gt(0)
+            logits.masked_fill_(~has_partners[:, None], float("-inf"))
+
         index, onehot, logits, (attachment, merger) = self.sample_and_pad(self.actions_dim[0], sections.tolist(), logits, attachments, mergers)
         return ActionBatch(batch_size, index, onehot, attachment, logits), merger
 
@@ -149,6 +160,11 @@ class Actor(nn.Module):
         options = torch.stack(options, dim=2)
         options = self.pad(options.split(sections), size).view(batch_size, size, -1, options.size(2))
         logits = self.pad(logits.split(sections), size, value=float("-inf")).view(batch_size, size)
+        
+        # Check for all-masked logits which causes NaNs in softmax
+        if torch.isinf(logits).all(dim=1).any():
+            raise ValueError("All possible actions are masked (no compatible partners found).")
+
         onehot = F.gumbel_softmax(logits, tau=self.tau, hard=True, dim=1)
         index = torch.argmax(onehot, dim=1, keepdim=True)
         options = onehot[None, :, None, :] @ options.permute(3, 0, 1, 2)

@@ -1,4 +1,3 @@
-environment.py
 from rdkit import Chem
 from operator import methodcaller, itemgetter
 from functools import partial
@@ -45,26 +44,48 @@ class Environment(object):
         self.rewards = rewards
         self.timelimit = timelimit
         self.fragments = []
-        for frag in self.frag_vocab:
+        print(f"Loading and filtering {len(self.frag_vocab)} fragments...")
+        for i, frag in enumerate(self.frag_vocab):
+            if i % 1000 == 0:
+                print(f"Processed {i}/{len(self.frag_vocab)} fragments...")
             try:
-                state = State(frag, 0, **self.state_args)
-                # architecture safety check: The current connect_mols only handles terminal stickers.
-                # If a sticker has > 1 neighbor, it is a "bridging" fragment that will break the molecule.
-                is_valid = True
-                mol = state.molecule
-                for idx in state.attachment_ids:
-                    if len(mol.GetAtomWithIdx(idx).GetNeighbors()) > 1:
-                        is_valid = False
-                        break
+                # Fast check: Parse molecule and check for bridging attachments first
+                mol = Chem.MolFromSmiles(frag)
+                if mol is None:
+                    continue
                 
-                if is_valid:
+                is_valid = True
+                sticker_count = 0
+                for atom in mol.GetAtoms():
+                    if atom.GetSymbol() == "*" or atom.GetAtomicNum() == 0:
+                        sticker_count += 1
+                        if len(atom.GetNeighbors()) != 1:
+                            is_valid = False
+                            break
+                
+                if is_valid and sticker_count > 0:
+                    # Only create the expensive State object for valid fragments
+                    state = State(frag, 0, **self.state_args)
                     self.fragments.append(state)
             except Exception as e:
-                print(f"Skipping invalid fragment {frag}: {e}")
+                pass # Silent skip for malformed SMILES in large libraries
         
+        print(f"Finished loading. {len(self.fragments)} valid fragments found.")
+        
+        from collections import Counter
+        type_counts = Counter()
+        for frag in self.fragments:
+            for t in frag.attachment_types:
+                type_counts[t] += 1
+        
+        print("Fragment Library Distribution:")
+        for t, count in sorted(type_counts.items()):
+            label = attach_vocab[t] if t < len(attach_vocab) else f"Type {t}"
+            print(f"  {label}: {count} fragments")
+
         num_att = [len(frag.attachments) for frag in self.fragments]
         S, T = len(self.state.attachments), timelimit
-        N, M = len(frag_vocab), max(num_att)
+        N, M = len(self.fragments), max(num_att) if num_att else 0
         self.actions_dim = (S + T * (M - 1), N, M)
 
     def reward_batch(self, smiles):

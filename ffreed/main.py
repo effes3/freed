@@ -155,6 +155,7 @@ def main(args):
     else:
         epoch = args['epochs']
     if 'train' in commands:
+        print("Starting training loop...")
         sac.train()
     if 'sample' in commands:
         sac.sample(num_mols=args['num_mols'], dump=True)
