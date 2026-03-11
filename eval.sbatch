@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=FREED_Synthesis
+#SBATCH --job-name=FREED_Eval
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --gpus=1
 #SBATCH --time=3-00:00           
 #SBATCH --output=logs/freed-%j.out
@@ -25,15 +25,18 @@ python -u $SOURCE_DIR/main.py \
     --receptor $DATA_DIR/receptors/protein.pdbqt \
     --vina_program $PROJ_DIR/utils/qvina02 \
     --starting_smile "c1([*:1])c([*:2])ccc([*:3])c1" \
-    --fragmentation crem \
+    --fragmentation brics \
     --num_sub_proc 12 \
-    --n_conf 1 \
-    --exhaustiveness 4 \
+    --n_conf 3 \
+    --exhaustiveness 8 \
     --save_freq 50 \
     --epochs 200 \
-    --commands "train,sample" \
+    --commands "evaluate" \
     --reward_version soft \
     --box_center "$BOX_CENTER" \
     --box_size "$BOX_SIZE" \
     --seed 150 \
-    --name freed_fixed 
+    --timeout_dock 90 \
+    --timeout_gen3d 30 \
+    --name ffreed_expert_v1
+
